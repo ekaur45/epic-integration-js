@@ -4,6 +4,8 @@ const { v4: uuidv4 } = require('uuid');
 const { AppDataSource } = require('../utils/ormconfig');
 const AccessToken = require('../models/entities/access-token.entity');
 const TokenResponseModel = require('../models/dto/token-response.model');
+const { MongoClient } = require('mongodb');
+const { getCollection } = require('../utils/mongo.util');
 
 class TokenService {
     async generateToken() {
@@ -37,15 +39,17 @@ class TokenService {
 
         const result = await axios.post(tokenUrl, formData, { headers: { "Content-Type": "application/x-www-form-urlencoded" } });
         const tokenModel = new TokenResponseModel(result.data);
-        await AppDataSource.getRepository(AccessToken).create(tokenModel);
+        await (await getCollection("access_token")).insertOne(tokenModel);
         return result.data;
     }
 
     async getAccessTokenFromDb() {
-        let tokenModel = await AppDataSource.getRepository(AccessToken).findOne({ order: { createdAt: "DESC" } });
+        let tokenModel = await (await getCollection("access_token")).findOne({},{sort:{createdAt:-1}});
+        //let tokenModel = await AppDataSource.getRepository(AccessToken).findOne({ order: { createdAt: "DESC" } });
 
         if (!tokenModel || !tokenModel.accessToken) {
             await this.generateToken();
+            tokenModel = await (await getCollection("access_token")).findOne({},{sort:{createdAt:-1}});
         }
 
         const createdAt = tokenModel?.createdAt.getTime();
@@ -57,12 +61,12 @@ class TokenService {
         //     await this.generateToken();
         // }
 
-        tokenModel = await AppDataSource.getRepository(AccessToken).findOne({ order: { createdAt: "DESC" } });
+        
         return tokenModel?.accessToken;
     }
 
     async renewToken() {
-        await this.getAccessTokenFromDb();
+        await this.generateToken();
     }
 }
 

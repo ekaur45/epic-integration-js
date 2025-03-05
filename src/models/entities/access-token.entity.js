@@ -2,7 +2,7 @@ const { EntitySchema } = require("typeorm");
 
 const AccessToken = new EntitySchema({
     name: "AccessToken",
-    tableName: "access_tokens",
+    tableName: "access_token",
     columns: {
         _id: {
             type:  process.env.DB_TYPE === "mongodb" ? "objectId" : "uuid",
