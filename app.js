@@ -25,10 +25,12 @@ process.on('unhandledRejection', (reason) => {
 process.on('uncaughtException', (error) => {
     throw error;
 });
-
+app.use((req, res, next) => {
+    return res.NotFound(`Cannot ${req.method} ${req.originalUrl}`);
+});
 app.use((err, req, res, next) => {
-    logger.error(err.message, err);
-    res.InternalServerError({ message: err.message, stack: err.stack });
+    logger.error(err?.message, err);
+    res.InternalServerError({ message: err?.message, stack: err?.stack || err });
 });
 
 const server = http.createServer(app);

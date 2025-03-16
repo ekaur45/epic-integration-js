@@ -18,6 +18,21 @@ class EpicController {
         const patientInfo = await this.epicEmrService.searchPatient({ family, given, dob });
         return res.Ok(patientInfo);
     }
+    $find = async (req, res, next) => {
+        const patientId = req.query.patientId;
+        const result = await this.epicEmrService.findSlot(patientId);
+        return res.Ok(result);
+    }
+    $book = async (req, res, next) => {
+        const {note,appointmentId,patientId} = req.body;
+        const result = await this.epicEmrService.bookSlot({note,appointmentId,patientId});
+        return res.Ok(result);
+    }
+    createPatient = async (req, res, next) => {
+        const { family, given, dob } = req.body;
+        const patientInfo = await this.epicEmrService.createPatient({ family, given, dob });
+        return res.Ok(patientInfo);
+    }
 }
 
 module.exports = EpicController;
