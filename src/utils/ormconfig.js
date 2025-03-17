@@ -23,7 +23,6 @@ const AppDataSource =
               host: process.env.MONGO_HOST,
               port: Number(process.env.MONGO_PORT),
               database: process.env.MONGO_DATABASE,
-              useUnifiedTopology: true,
               entities: [AccessToken],
               synchronize: true,
           });

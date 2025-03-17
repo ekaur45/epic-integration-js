@@ -6,6 +6,7 @@ const http = require("http");
 const { AppDataSource } = require('./src/utils/ormconfig');
 const logger = require('./src/utils/logger');
 const extendResponse = require('./src/utils/res-ext');
+const safeCode = require('./src/utils/safe-code');
 
 const app = express();
 app.use(express.json());
@@ -14,7 +15,7 @@ AppDataSource.initialize()
     .then(() => console.log(`Connected to ${process.env.DB_TYPE} database`))
     .catch((err) => console.error("Database connection error:", err));
 
-app.use("/api", apiRouter);
+app.use("/api", safeCode(apiRouter));
 
 /* istanbul ignore next */ 
 process.on('unhandledRejection', (reason) => {

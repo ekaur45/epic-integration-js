@@ -26,7 +26,6 @@ const logger = winston.createLogger({
       db: MONGO_URI,
       collection: "app_logs",
       level: "info",
-      options: { useUnifiedTopology: true },
       storeHost: true,
       capped: true,
       cappedSize: 10000000,

@@ -3,32 +3,32 @@ const { extractPatientInfo } = require('../utils/extractPatientInfo');
 const TokenService = require('./token.service');
 const { savePatientToDatabase, findPatientById } = require('../utils/patient.util');
 const { toSlotDto, toAppointmentDto } = require('../utils/transformers/appointment');
-axios.interceptors.request.use(
-    (config) => {
-      console.log(`📤 [Request] ${config.method?.toUpperCase()} ${config.url}`);
-      console.log("Headers:", config.headers);
-      console.log("Data:", config.data);
-      return config;
-    },
-    (error) => {
-      console.error("❌ [Request Error]:", error);
-      return Promise.reject(error);
-    }
-  );
+// axios.interceptors.request.use(
+//     (config) => {
+//       console.log(`📤 [Request] ${config.method?.toUpperCase()} ${config.url}`);
+//       console.log("Headers:", config.headers);
+//       console.log("Data:", config.data);
+//       return config;
+//     },
+//     (error) => {
+//       console.error("❌ [Request Error]:", error);
+//       return Promise.reject(error);
+//     }
+//   );
   
-  // Response Interceptor - Logs response details
-  axios.interceptors.response.use(
-    (response) => {
-      console.log(`📥 [Response] ${response.config.method?.toUpperCase()} ${response.config.url}`);
-      console.log("Status:", response.status);
-      console.log("Data:", response.data);
-      return response;
-    },
-    (error) => {
-      console.error("❌ [Response Error]:", error.response ? error.response.data : error.message);
-      return Promise.reject(error);
-    }
-  );
+//   // Response Interceptor - Logs response details
+//   axios.interceptors.response.use(
+//     (response) => {
+//       console.log(`📥 [Response] ${response.config.method?.toUpperCase()} ${response.config.url}`);
+//       console.log("Status:", response.status);
+//       console.log("Data:", response.data);
+//       return response;
+//     },
+//     (error) => {
+//       console.error("❌ [Response Error]:", error.response ? error.response.data : error.message);
+//       return Promise.reject(error);
+//     }
+//   );
   class EpicEmrService {
     constructor() {
         this.tokenService = new TokenService();
@@ -49,6 +49,18 @@ axios.interceptors.request.use(
         }
         throw new Error('Patient not found');
     }
+    readPatient = async (patientId)=>{
+        const parameters = {
+            "_id": patientId,
+        };
+        const result = await this.getBundle('Patient/_search', parameters);
+        if (result && result.total > 0) {
+            const fhirPatient = result.entry[0].resource;
+            savePatientToDatabase(fhirPatient);
+            return await extractPatientInfo(fhirPatient);
+        }
+        throw new Error('Patient not found');
+    }
     createPatient = async (obj)=>{
         const createPatientParams =  {}
         const result = await this.getBundle("Patient",createPatientParams);
@@ -56,18 +68,15 @@ axios.interceptors.request.use(
        
         return result;
     }
-    getAppointments = async (body) => {
-        const { epicPatientId, family, given, dob } = body;
-        let _pid = epicPatientId;
-
-        if (!_pid) {
+    getAppointments = async (epicPatientId) => {
+        if (!epicPatientId) {
             const patient = await this.searchPatient(body);
             if (!patient) throw new Error('Patient not found');
             _pid = patient.id;
         }
 
         const parameters = {
-            "patient": _pid,
+            "patient": epicPatientId,
             "_count": "200"
         };
 
@@ -88,22 +97,23 @@ axios.interceptors.request.use(
      * @param {*} patientId - FHIR Patient Id
      * @returns 
      */
-    findSlot = async (patientId) => {
-        
-        const patient = await findPatientById(patientId);
-        if (!patient) {
-            throw "Patient not found.";
-        }
+    findSlot = async (patient) => {
         const obj = {
-            "resourceType": "Parameters", "parameter": [
+            "resourceType": "Parameters", 
+           
+            "parameter": [
                 patient,
+                {
+                    "name": "_count",
+                    "valueInteger": 3
+                }
             ]
         }
         const _date = new Date();
         const year = _date.getFullYear();
         let month = _date.getMonth() + 1;
         month = month < 10 ? "0" + month : month;
-        let day = _date.getDate();
+        let day = _date.getUTCDate();
         day = day < 10 ? "0" + day : day;
         const date = `${year}-${month}-${day}`;
         obj['parameter'].push({
@@ -154,7 +164,10 @@ axios.interceptors.request.use(
 
         }
         const result = await this.postBundleStu3("Appointment/$book", bookParams);
-        return result?.entry;
+        if(result&&result.entry&&result.entry.length>0){
+            return toAppointmentDto(result.entry[0]);
+        }
+        return null;
 
     }
     postBundleStu3 = async (url, parameters, isRetry = false) => {
@@ -202,6 +215,9 @@ axios.interceptors.request.use(
                 : await requestMethod(requestUrl, { params: { ...formParams, "_count": "200" }, ...config });
 
             let bundle = result.data;
+            if(false){
+
+            
             let allEntries = bundle.entry || [];
             // Handle pagination
             let nextLink = bundle.link?.find(x => x.relation === "next");
@@ -219,6 +235,7 @@ axios.interceptors.request.use(
 
             bundle.entry = allEntries;
             bundle.total =allEntries.length;
+        }
             return bundle;
 
         } catch (error) {
