@@ -30,7 +30,7 @@ class EpicController {
     }
     createPatient = async (req, res, next) => {
         const { family, given, dob } = req.body;
-        const patientInfo = await this.epicEmrService.createPatient({ family, given, dob });
+        const patientInfo = await this.epicEmrService.createPatient(req.body);
         return res.Ok(patientInfo);
     }
 }

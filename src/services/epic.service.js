@@ -62,10 +62,32 @@ const { toSlotDto, toAppointmentDto } = require('../utils/transformers/appointme
         throw new Error('Patient not found');
     }
     createPatient = async (obj)=>{
-        const createPatientParams =  {}
-        const result = await this.getBundle("Patient",createPatientParams);
-        
-       
+        const createPatientParams =   {
+            "resourceType": "Patient",
+            "identifier": [
+                {
+                    "use": "usual",
+                    "system": "urn:oid:2.16.840.1.113883.4.1",
+                    "value": "000-00-0000"
+                }
+            ],
+            "active": "true",
+            "name": [
+                {
+                    "use": "usual",
+                    "family": obj.family,
+                    "given": [
+                        obj.given
+                    ]
+                }
+            ],
+           
+            "gender": obj.gender,
+            "birthDate": obj.dateOfBirth
+           
+        };
+        const result = await this.postBundle("Patient",createPatientParams,{"Prefer":"return=representation"});
+        return await extractPatientInfo(result);
         return result;
     }
     getAppointments = async (epicPatientId) => {
@@ -163,11 +185,19 @@ const { toSlotDto, toAppointmentDto } = require('../utils/transformers/appointme
             ]
 
         }
-        const result = await this.postBundleStu3("Appointment/$book", bookParams);
-        if(result&&result.entry&&result.entry.length>0){
-            return toAppointmentDto(result.entry[0]);
+        try {
+            const result = await this.postBundleStu3("Appointment/$book", bookParams);
+            if(result&&result.entry&&result.entry.length>0){
+                return toAppointmentDto(result.entry[0]);
+            }
+            return null;
+        } catch (error) {
+            if(error&&error['issue']&&Array.isArray(error['issue'])){
+                const issue = error['issue'].map(x=>x.diagnostics);
+                throw issue;
+            }
+            throw error;
         }
-        return null;
 
     }
     postBundleStu3 = async (url, parameters, isRetry = false) => {
@@ -271,7 +301,33 @@ const { toSlotDto, toAppointmentDto } = require('../utils/transformers/appointme
                 await this.tokenService.renewToken();
                 return this.getBundle(url, parameters, isPost, true);
             }
-            throw error?.response?.data;
+            let _error = error?.response?.data;
+            if(_error&&_error['issue']&&Array.isArray(_error['issue'])){
+                const issue = _error['issue'].map(x=>x);
+                throw issue;
+            }
+        }
+    }
+    postBundle = async (url, parameters, headers = {}, isRetry = false) => {
+        try {
+            const accessToken = await this.tokenService.getAccessTokenFromDb();
+            const result = await axios.post(process.env.EPIC_BASE_URL + url, parameters, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    ...headers
+                }
+            });
+            return result.data;
+        } catch (error) {
+            if (error.response && error.response.status === 401 && !isRetry) {
+                await this.tokenService.renewToken();
+                return this.getBundle(url, parameters,headers, isPost, true);
+            }
+            let _error = error?.response?.data;
+            if(_error&&_error['issue']&&Array.isArray(_error['issue'])){
+                const issue = _error['issue'].map(x=>x);
+                throw issue;
+            }
         }
     }
 }

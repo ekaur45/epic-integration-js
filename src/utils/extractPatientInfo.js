@@ -1,11 +1,11 @@
 function extractPatientInfo(fhirPatient) {
     return {
-        id: fhirPatient.id || "Unknown",
+        id: fhirPatient.id || "",
         name: extractName(fhirPatient),
-        dateOfBirth: fhirPatient.birthDate || "Unknown",
+        dateOfBirth: fhirPatient.birthDate || "",
         phoneNumber: extractPhoneNumber(fhirPatient),
         address: extractAddress(fhirPatient),
-        maritalStatus: (fhirPatient.maritalStatus && fhirPatient.maritalStatus.text) || "Unknown",
+        maritalStatus: (fhirPatient.maritalStatus && fhirPatient.maritalStatus.text) || "",
         generalPractitioner: extractGeneralPractitioner(fhirPatient),
         managingOrganization: extractManagingOrganization(fhirPatient),
     };
@@ -16,15 +16,15 @@ function extractName(patient) {
         const name = patient.name[0]; // Get first name object
         return `${(name.given && name.given.join(" ")) || ""} ${name.family || ""}`.trim();
     }
-    return "Unknown";
+    return "";
 }
 
 function extractPhoneNumber(patient) {
     if (patient.telecom && Array.isArray(patient.telecom)) {
         const phoneEntry = patient.telecom.find(t => t.system === "phone");
-        return (phoneEntry && phoneEntry.value) || "Unknown";
+        return (phoneEntry && phoneEntry.value) || "";
     }
-    return "Unknown";
+    return "";
 }
 
 function extractAddress(patient) {
@@ -32,14 +32,14 @@ function extractAddress(patient) {
         const addr = patient.address[0];
         return `${(addr.line && addr.line.join(", ")) || ""}, ${addr.city || ""}, ${addr.state || ""}, ${addr.postalCode || ""}, ${addr.country || ""}`.trim();
     }
-    return "Unknown";
+    return "";
 }
 
 function extractGeneralPractitioner(patient) {
     if (patient.generalPractitioner && Array.isArray(patient.generalPractitioner)) {
         return patient.generalPractitioner.map(gp => ({
-            name: gp.display || "Unknown",
-            reference: gp.reference || "Unknown",
+            name: gp.display || "",
+            reference: gp.reference || "",
         }));
     }
     return [];
@@ -48,11 +48,11 @@ function extractGeneralPractitioner(patient) {
 function extractManagingOrganization(patient) {
     if (patient.managingOrganization) {
         return {
-            name: patient.managingOrganization.display || "Unknown",
-            reference: patient.managingOrganization.reference || "Unknown",
+            name: patient.managingOrganization.display || "",
+            reference: patient.managingOrganization.reference || "",
         };
     }
-    return { name: "Unknown", reference: "Unknown" };
+    return { name: "", reference: "" };
 }
 
 module.exports = {
