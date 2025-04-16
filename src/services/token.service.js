@@ -9,7 +9,7 @@ const { getCollection } = require('../utils/mongo.util');
 
 class TokenService {
     async generateToken() {
-        let privateKey = require("fs").readFileSync(require("path").join(__dirname,"..","../keys/epic.pem")).toString("utf-8");        
+        let privateKey = require("fs").readFileSync(require("path").join(__dirname,"..","../keys/privatekey.pem")).toString("utf-8");        
         const tokenUrl = process.env.EPIC_TOKEN_URL;
         const header = {
             alg: "RS384",
